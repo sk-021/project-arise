@@ -1,0 +1,74 @@
+2026-02-16 21:04 IST
+- Created repo root changelog.txt.
+- Established changelog format: one entry per applied change-set; timestamped.
+
+2026-02-16 21:00 IST
+- Started backend on port 8010 to avoid port 8000 conflicts and port 8001 permission error.
+- Verified /auth/register and /auth/login return 200 and issue JWT access tokens.
+
+2026-02-16 20:58 IST
+- Rewrote backend auth stack to a clean minimal implementation.
+  - backend/auth.py: JWT create/decode + get_current_user dependency.
+  - backend/security.py: password hashing/verify using direct bcrypt.
+  - backend/routes/auth.py: register/login endpoints with proper error handling.
+
+2026-02-16 20:57 IST
+- Protected AI routes by requiring JWT authentication.
+- Confirmed behavior: 401 without Authorization header; 200 with Bearer token.
+
+2026-02-16 20:55 IST
+- Fixed configuration startup failures by ensuring SECRET_KEY is loaded and validated.
+
+2026-02-16 20:50 IST
+- Added backend/run_backend_8010.bat to start uvicorn on port 8010 with reload + debug logging.
+
+2026-02-16 21:08 IST
+- Added AI history persistence.
+  - backend/models/history.py: new AIHistory model.
+  - backend/routes/history.py: GET /history/ returns the authenticated user’s saved outputs.
+  - backend/routes/{resume,projects,linkedin}.py: save input/output per request linked to current_user.email.
+  - backend/main.py: import AIHistory and register history router so table is created on startup.
+
+2026-02-16 21:35 IST
+- Implemented credit-based usage tracking per user.
+  - backend/models/user.py: added credits (default 20) and total_requests (default 0).
+  - backend/routes/{resume,projects,linkedin}.py: block when credits <= 0; deduct 1 credit and increment total_requests per AI call.
+  - backend/routes/auth.py: added GET /auth/me returning email, credits, total_requests.
+  - Reset SQLite app2.db and verified users table schema includes credits and total_requests.
+  - Verified behavior: credits decrement on AI calls; request blocked with 403 when credits reach 0.
+
+2026-02-16 22:15 IST
+- Implemented per-user rate limiting (5 requests per minute) on AI routes.
+  - Installed slowapi library for rate limiting.
+  - Created backend/rate_limiter.py with per-user key function extracting email from JWT token.
+  - backend/main.py: configured limiter with custom exception handler returning 429 with proper message.
+  - backend/routes/{resume,projects,linkedin}.py: applied @limiter.limit("5/minute") decorators.
+  - Verified behavior: 5 successful requests, 6th returns 429, credits not deducted on 429, limit resets after 60 seconds, per-user isolation, auth checked before rate limiting.
+
+2026-02-17 22:50 IST
+- Implemented production-safe configuration structure with environment variables.
+  - Updated backend/.env with all sensitive configuration (SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, DATABASE_URL, AI service settings).
+  - backend/settings.py: centralized all configuration with proper environment variable loading.
+  - backend/auth.py: replaced hardcoded values with settings.SECRET_KEY, settings.ALGORITHM, settings.ACCESS_TOKEN_EXPIRE_MINUTES.
+  - backend/rate_limiter.py: updated to use settings.SECRET_KEY and settings.ALGORITHM.
+  - backend/database.py: updated to use settings.DATABASE_URL.
+  - Updated .gitignore to exclude .env and *.db files.
+  - Verified all functionality works: login, token generation, AI routes, credits system, rate limiting.
+
+2026-02-17 22:59 IST
+- Implemented structured logging and global error handler for production-ready debugging.
+  - Created backend/logger.py with structured logging format: timestamp | level | name | message.
+  - backend/main.py: added request logging middleware to log all HTTP requests with method, path, status, and response time.
+  - backend/main.py: implemented global exception handler to catch unhandled exceptions and return clean error responses.
+  - Disabled debug mode to prevent stack traces from leaking to clients.
+  - Verified behavior: structured logs appear in console, errors return clean {"detail":"Internal server error"} without stack traces.
+
+2026-02-18 22:05 IST
+- Dockerized FastAPI backend for production deployment.
+  - Created backend/Dockerfile with Python 3.11-slim base image and production-ready configuration.
+  - Created backend/.dockerignore to exclude unnecessary files from Docker build context.
+  - Updated backend/requirements.txt with complete dependency list using pip freeze.
+  - Configured Docker container to expose port 8010 and run uvicorn with production settings.
+  - Validated all core functionality: registration, login, authentication, credits system, rate limiting.
+  - Note: Docker build/run commands documented but not executed due to Docker not being available on current system.
+  - Container ready for cloud deployment with environment variable support via .env file.

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+app2.db
+.venv
+.git
+.gitignore
