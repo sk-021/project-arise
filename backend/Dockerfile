@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port
-EXPOSE 8010
+EXPOSE $PORT
 
-# Run app with production server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010"]
+# Run app with production server using environment variable
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "$PORT"]
